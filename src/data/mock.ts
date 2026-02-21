@@ -77,8 +77,8 @@ export const TIME_OPTIONS: TimeOption[] = [
 ];
 
 export const SIDEBAR_ITEMS = [
-  { label: "Practice", active: true },
-  { label: "Lessons" },
+  { label: "Practice", href: "/" },
+  { label: "Lessons", href: "/lessons" },
   { label: "Leaders" },
   { label: "Tournaments" },
   { label: "Tests" },

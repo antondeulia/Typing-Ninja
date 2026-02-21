@@ -1,0 +1,95 @@
+.lessonHeader {
+  margin-top: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+}
+
+.lessonOverline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lessonTitle {
+  margin: 0;
+  font-size: clamp(26px, 3.3vw, 34px);
+  line-height: 1.08;
+}
+
+.lessonMeta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.lessonMetaMono {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: var(--font-jetbrains-mono), monospace;
+}
+
+.lessonRowBadge {
+  margin: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--text-primary);
+}
+
+.lessonActions {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lessonLink,
+.lessonButton,
+.lessonStat {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.lessonLink {
+  background: var(--control-bg);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.lessonButton {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+}
+
+.lessonStat {
+  background: var(--control-bg);
+  color: var(--text-primary);
+}
+
+.textArea {
+  height: calc(1.5em + 16px);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .lessonHeader {
+    margin-top: 8px;
+  }
+}
