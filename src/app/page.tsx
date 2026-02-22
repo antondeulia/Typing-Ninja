@@ -6,14 +6,43 @@ import { SettingsPanel } from "@/components/typing/SettingsPanel";
 import { Sidebar } from "@/components/typing/Sidebar";
 import { TopPanel } from "@/components/typing/TopPanel";
 import { TrainingText } from "@/components/typing/TrainingText";
-import { TextType, ThemeMode } from "@/components/typing/types";
+import { TextType, ThemeMode, THEME_OPTIONS } from "@/components/typing/types";
 import { generateText } from "@/utils/typing/text";
 import styles from "./page.module.css";
+
+const THEME_STORAGE_KEY = "typing-ninja-theme";
+const DEFAULT_THEME: ThemeMode = "dark-modern";
+const THEME_VALUES = new Set<ThemeMode>(THEME_OPTIONS.map((option) => option.value));
+
+const getStoredTheme = (value: string | null): ThemeMode | null => {
+  if (value === "dark") {
+    return "dark-modern";
+  }
+
+  if (value === "light") {
+    return "light-modern";
+  }
+
+  if (value && THEME_VALUES.has(value as ThemeMode)) {
+    return value as ThemeMode;
+  }
+
+  return null;
+};
+
+const hasUnfixedMistake = (typedValue: string, expectedValue: string) => {
+  for (let index = 0; index < typedValue.length; index += 1) {
+    if (typedValue[index] !== expectedValue[index]) {
+      return true;
+    }
+  }
+  return false;
+};
 
 export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+  const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
   const [textType, setTextType] = useState<TextType>("simple");
   const [duration, setDuration] = useState(60);
   const [includeNumbers, setIncludeNumbers] = useState(false);
@@ -40,10 +69,15 @@ export default function Home() {
   const shareTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const storedTheme = getStoredTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+    if (storedTheme) {
+      setTheme(storedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
     document.body.dataset.theme = theme;
-    return () => {
-      delete document.body.dataset.theme;
-    };
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
   useEffect(() => {
@@ -92,18 +126,20 @@ export default function Home() {
       return;
     }
 
-    const relativeTop = currentChar.offsetTop - textBox.offsetTop;
-    const currentLine = Math.floor(relativeTop / lineHeight);
-    const firstVisibleLine = Math.floor(textBox.scrollTop / lineHeight);
-    const lastVisibleLine = firstVisibleLine + 2;
+    const paddingTop = Number.parseFloat(stylesMap.paddingTop) || 0;
+    const relativeTop = currentChar.offsetTop - textBox.offsetTop - paddingTop;
+    const visibleLines = 3;
+    const targetActiveLineInViewport = 1;
+    const currentLine = Math.max(0, Math.floor(relativeTop / lineHeight));
+    const normalizedScrollTop = Math.max(0, textBox.scrollTop - paddingTop);
+    const firstVisibleLine = Math.floor(normalizedScrollTop / lineHeight);
+    const desiredFirstVisibleLine = Math.max(0, currentLine - targetActiveLineInViewport);
+    const maxAllowedFirstVisibleLine = Math.max(0, firstVisibleLine + (visibleLines - 1));
 
-    if (currentLine >= lastVisibleLine) {
-      textBox.scrollTop = Math.max(0, (currentLine - 1) * lineHeight);
-      return;
-    }
-
-    if (currentLine < firstVisibleLine) {
-      textBox.scrollTop = Math.max(0, currentLine * lineHeight);
+    if (currentLine > maxAllowedFirstVisibleLine || firstVisibleLine !== desiredFirstVisibleLine) {
+      textBox.scrollTop = Math.round(
+        Math.max(0, paddingTop + desiredFirstVisibleLine * lineHeight),
+      );
     }
   }, [typed, trainingText]);
 
@@ -150,7 +186,7 @@ export default function Home() {
       return;
     }
 
-    if (event.ctrlKey || event.altKey || event.metaKey || event.key === "Tab") {
+    if (event.altKey || event.metaKey || event.key === "Tab") {
       return;
     }
 
@@ -167,6 +203,10 @@ export default function Home() {
       return;
     }
 
+    if (event.ctrlKey) {
+      return;
+    }
+
     const nextChar = event.key === "Enter" ? "\n" : event.key;
 
     if (nextChar.length !== 1) {
@@ -180,7 +220,8 @@ export default function Home() {
       }
 
       const nextValue = prev + nextChar;
-      if (nextValue.length >= trainingText.length) {
+
+      if (nextValue.length >= trainingText.length && !hasUnfixedMistake(nextValue, trainingText)) {
         setElapsedAtFinish(Math.max(1, duration - timeLeft));
         setFinished(true);
         setStarted(false);
@@ -188,7 +229,7 @@ export default function Home() {
       return nextValue;
     });
     },
-    [duration, finished, timeLeft, trainingText.length],
+    [duration, finished, timeLeft, trainingText],
   );
 
   useEffect(() => {
@@ -247,6 +288,7 @@ export default function Home() {
   const progress = Math.min(100, Math.round((typed.length / trainingText.length) * 100));
   const cpm = elapsedSeconds === 0 ? 0 : Math.round((correctChars / elapsedSeconds) * 60);
   const mistakes = Math.max(0, typed.length - correctChars);
+  const activeIndex = typed.length;
   const completionReason = progress >= 100 ? "Текст завершён полностью" : "Таймер завершился";
 
   const showShareFeedback = useCallback((message: string) => {
@@ -350,6 +392,7 @@ export default function Home() {
             styles={styles}
             trainingText={trainingText}
             typed={typed}
+            activeIndex={activeIndex}
             finished={finished}
             textBoxRef={textBoxRef}
             currentCharRef={currentCharRef}

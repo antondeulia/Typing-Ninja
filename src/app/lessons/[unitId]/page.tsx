@@ -30,6 +30,15 @@ const getCorrectChars = (source: string, expected: string) => {
   return total;
 };
 
+const hasUnfixedMistake = (typedValue: string, expectedValue: string) => {
+  for (let index = 0; index < typedValue.length; index += 1) {
+    if (typedValue[index] !== expectedValue[index]) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const splitLessonRows = (lessonText: string, rowsCount = LESSON_ROWS_PER_UNIT) => {
   const words = lessonText.trim().split(/\s+/).filter(Boolean);
 
@@ -80,6 +89,8 @@ export default function LessonPage() {
   const textBoxRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement>(null);
   const flashTimeoutRef = useRef<number | null>(null);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const againButtonRef = useRef<HTMLButtonElement>(null);
 
   const unitId = useMemo(() => {
     const parsedUnitId = Number.parseInt(params.unitId ?? "", 10);
@@ -112,18 +123,20 @@ export default function LessonPage() {
       return;
     }
 
-    const relativeTop = currentChar.offsetTop - textBox.offsetTop;
-    const currentLine = Math.floor(relativeTop / lineHeight);
-    const firstVisibleLine = Math.floor(textBox.scrollTop / lineHeight);
+    const paddingTop = Number.parseFloat(stylesMap.paddingTop) || 0;
+    const relativeTop = currentChar.offsetTop - textBox.offsetTop - paddingTop;
+    const currentLine = Math.max(0, Math.floor(relativeTop / lineHeight));
+    const normalizedScrollTop = Math.max(0, textBox.scrollTop - paddingTop);
+    const firstVisibleLine = Math.floor(normalizedScrollTop / lineHeight);
     const lastVisibleLine = firstVisibleLine + 1;
 
     if (currentLine >= lastVisibleLine) {
-      textBox.scrollTop = Math.max(0, (currentLine - 1) * lineHeight);
+      textBox.scrollTop = Math.round(Math.max(0, paddingTop + (currentLine - 1) * lineHeight));
       return;
     }
 
     if (currentLine < firstVisibleLine) {
-      textBox.scrollTop = Math.max(0, currentLine * lineHeight);
+      textBox.scrollTop = Math.round(Math.max(0, paddingTop + currentLine * lineHeight));
     }
   }, [currentRowText, typed]);
 
@@ -179,7 +192,7 @@ export default function LessonPage() {
         return;
       }
 
-      if (event.ctrlKey || event.altKey || event.metaKey || event.key === "Tab") {
+      if (event.altKey || event.metaKey || event.key === "Tab") {
         return;
       }
 
@@ -188,6 +201,10 @@ export default function LessonPage() {
 
       if (event.key === "Backspace") {
         setTyped((prev) => prev.slice(0, -1));
+        return;
+      }
+
+      if (event.ctrlKey) {
         return;
       }
 
@@ -201,37 +218,15 @@ export default function LessonPage() {
       }
 
       const nextTyped = typed + nextChar;
+
       setTyped(nextTyped);
 
-      if (nextTyped.length >= currentRowText.length) {
+      if (nextTyped.length >= currentRowText.length && !hasUnfixedMistake(nextTyped, currentRowText)) {
         completeCurrentRow(nextTyped);
       }
     },
-    [completeCurrentRow, currentRowText.length, flashKey, lesson, resultModalOpen, startedAt, typed],
+    [completeCurrentRow, currentRowText, flashKey, lesson, resultModalOpen, startedAt, typed],
   );
-
-  useEffect(() => {
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (resultModalOpen && event.key === "Escape") {
-        setResultModalOpen(false);
-        return;
-      }
-
-      const target = event.target as HTMLElement | null;
-      const isEditableTarget =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        target?.isContentEditable === true;
-
-      if (!isEditableTarget) {
-        handleKey(event);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleKey, resultModalOpen]);
 
   const resetLesson = useCallback(() => {
     setTyped("");
@@ -250,32 +245,64 @@ export default function LessonPage() {
   );
   const liveCorrectChars = useMemo(() => getCorrectChars(typed, currentRowText), [currentRowText, typed]);
 
-  const totalTargetChars = lessonRows.reduce((total, row) => total + row.length, 0);
+  const totalRows = lessonRows.length;
+  const completedRows = rowResults.length;
   const totalTypedChars = finishedRowsTypedChars + typed.length;
   const totalCorrectChars = finishedRowsCorrectChars + liveCorrectChars;
   const accuracy = totalTypedChars === 0 ? 100 : Math.round((totalCorrectChars / totalTypedChars) * 100);
-  const progress = totalTargetChars === 0 ? 0 : Math.min(100, Math.round((totalTypedChars / totalTargetChars) * 100));
+  const activeIndex = typed.length;
+  const progress = totalRows === 0 ? 0 : Math.min(100, Math.floor((completedRows / totalRows) * 100));
 
   const elapsedSeconds = useMemo(() => {
-    if (!startedAt) {
+    if (!startedAt || !completedAt) {
       return 0;
     }
 
-    const endTime = completedAt ?? Date.now();
-    return Math.max(1, Math.round((endTime - startedAt) / 1000));
+    return Math.max(1, Math.round((completedAt - startedAt) / 1000));
   }, [completedAt, startedAt]);
 
   const wpm = elapsedSeconds === 0 ? 0 : Math.round((totalCorrectChars / 5 / elapsedSeconds) * 60);
   const cpm = elapsedSeconds === 0 ? 0 : Math.round((totalCorrectChars / elapsedSeconds) * 60);
   const mistakes = Math.max(0, totalTypedChars - totalCorrectChars);
   const canContinue = accuracy >= PASSING_ACCURACY;
-  const currentRowLabel = Math.min(lessonRows.length, activeRowIndex + 1);
   const nextLessonIndex = LESSON_UNITS.findIndex((item) => item.id === lesson?.id);
   const nextLesson = nextLessonIndex >= 0 ? LESSON_UNITS[nextLessonIndex + 1] : undefined;
 
   const completionMessage = canContinue
-    ? "Great work. You unlocked Continue."
-    : `Accuracy is ${accuracy}%. Reach ${PASSING_ACCURACY}%+ to continue.`;
+    ? "Урок пройден. Отличный темп, можно идти дальше."
+    : `Точность ${accuracy}%. Нужно минимум ${PASSING_ACCURACY}% - пройди урок заново.`;
+
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (resultModalOpen && canContinue && event.key === "Escape") {
+        setResultModalOpen(false);
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      const isEditableTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target?.isContentEditable === true;
+
+      if (!isEditableTarget) {
+        handleKey(event);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canContinue, handleKey, resultModalOpen]);
+
+  useEffect(() => {
+    if (!resultModalOpen) {
+      return;
+    }
+
+    const focusTarget = canContinue ? continueButtonRef.current : againButtonRef.current;
+    focusTarget?.focus();
+  }, [canContinue, resultModalOpen]);
 
   if (!lesson) {
     return (
@@ -302,26 +329,12 @@ export default function LessonPage() {
 
       <div className={styles.contentWrap}>
         <header className={styles.lessonHeader}>
-          <p className={styles.lessonOverline}>Lesson</p>
           <h1 className={styles.lessonTitle}>{lesson.title}</h1>
-          <p className={styles.lessonMeta}>{lesson.focus}</p>
-          <p className={styles.lessonMetaMono}>{lesson.symbols}</p>
-          <p className={styles.lessonRowBadge}>
-            Row {currentRowLabel}/{lessonRows.length}
-          </p>
-
-          <div className={styles.lessonActions}>
-            <Link href="/lessons" className={styles.lessonLink}>
-              Back to roadmap
-            </Link>
-            <button type="button" className={styles.lessonButton} onClick={resetLesson}>
-              Restart
-            </button>
-            <span className={styles.lessonStat}>Progress: {progress}%</span>
-            <span className={styles.lessonStat}>Accuracy: {accuracy}%</span>
-            <span className={styles.lessonStat}>
-              Row: {typed.length}/{currentRowText.length}
-            </span>
+          <div className={styles.lessonProgress} aria-label={`Progress ${progress}%`}>
+            <div className={styles.lessonProgressTrack}>
+              <div className={styles.lessonProgressFill} style={{ width: `${progress}%` }} />
+            </div>
+            <span className={styles.lessonProgressValue}>{progress}%</span>
           </div>
         </header>
 
@@ -330,6 +343,7 @@ export default function LessonPage() {
             styles={styles}
             trainingText={currentRowText}
             typed={typed}
+            activeIndex={activeIndex}
             finished={resultModalOpen}
             textBoxRef={textBoxRef}
             currentCharRef={currentCharRef}
@@ -344,34 +358,42 @@ export default function LessonPage() {
       </div>
 
       {resultModalOpen && (
-        <div className={styles.resultModalBackdrop} onClick={() => setResultModalOpen(false)} role="presentation">
+        <div
+          className={styles.resultModalBackdrop}
+          onClick={() => {
+            if (canContinue) {
+              setResultModalOpen(false);
+            }
+          }}
+          role="presentation"
+        >
           <div
-            className={styles.resultModal}
+            className={`${styles.resultModal} ${canContinue ? styles.resultModalPass : styles.resultModalFail}`}
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label="Unit result"
           >
-            <button
-              type="button"
-              className={styles.resultCloseButton}
-              onClick={() => setResultModalOpen(false)}
-              aria-label="Close result modal"
-            >
-              X
-            </button>
+            {canContinue && (
+              <button
+                type="button"
+                className={styles.resultCloseButton}
+                onClick={() => setResultModalOpen(false)}
+                aria-label="Close result modal"
+              >
+                X
+              </button>
+            )}
 
-            <div className={styles.resultConfetti} aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
+            <div className={styles.resultDecor} aria-hidden="true">
+              <span>✦</span>
+              <span>✺</span>
+              <span>✦</span>
+              <span>✶</span>
             </div>
 
-            <p className={styles.resultOverline}>Unit Complete</p>
-            <h2 className={styles.resultTitle}>Congratulations!</h2>
+            <p className={styles.resultOverline}>{canContinue ? "Lesson Complete" : "Lesson Retry Required"}</p>
+            <h2 className={styles.resultTitle}>{canContinue ? "Отличная работа" : "Нужно перепройти урок"}</h2>
             <p className={styles.resultSubtitle}>{completionMessage}</p>
 
             <div className={styles.resultStatsGrid}>
@@ -380,12 +402,12 @@ export default function LessonPage() {
                 <strong>{wpm}</strong>
               </article>
               <article>
-                <span>Accuracy</span>
+                <span>Accuracy %</span>
                 <strong>{accuracy}%</strong>
               </article>
               <article>
                 <span>Time</span>
-                <strong>{elapsedSeconds}s</strong>
+                <strong>{elapsedSeconds} sec</strong>
               </article>
               <article>
                 <span>Errors</span>
@@ -406,13 +428,18 @@ export default function LessonPage() {
                 type="button"
                 className={`${styles.resultButton} ${styles.resultButtonPrimary}`}
                 onClick={resetLesson}
+                ref={againButtonRef}
               >
-                Again
+                <span className={styles.resultButtonIcon} aria-hidden="true">
+                  ↺
+                </span>
+                {canContinue ? "Again" : "Retry lesson"}
               </button>
               {canContinue && (
                 <button
                   type="button"
                   className={`${styles.resultButton} ${styles.resultButtonSecondary}`}
+                  ref={continueButtonRef}
                   onClick={() => {
                     if (nextLesson) {
                       router.push(`/lessons/${nextLesson.id}`);
@@ -421,6 +448,9 @@ export default function LessonPage() {
                     router.push("/lessons");
                   }}
                 >
+                  <span className={styles.resultButtonIcon} aria-hidden="true">
+                    →
+                  </span>
                   Continue
                 </button>
               )}

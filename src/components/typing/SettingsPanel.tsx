@@ -1,6 +1,6 @@
 import { TEXT_TYPE_OPTIONS, TIME_OPTIONS } from "@/data/mock";
 import { StyleModule } from "@/shared/types/style";
-import { TextType, ThemeMode } from "./types";
+import { TextType, ThemeMode, THEME_OPTIONS } from "./types";
 
 type SettingsPanelProps = {
   styles: StyleModule;
@@ -107,20 +107,16 @@ export function SettingsPanel({
       <div className={styles.settingsGroup}>
         <span>Theme</span>
         <div className={styles.pillsRow}>
-          <button
-            type="button"
-            className={`${styles.pill} ${theme === "dark" ? styles.pillActive : ""}`}
-            onClick={() => onThemeChange("dark")}
-          >
-            Dark
-          </button>
-          <button
-            type="button"
-            className={`${styles.pill} ${theme === "light" ? styles.pillActive : ""}`}
-            onClick={() => onThemeChange("light")}
-          >
-            Light
-          </button>
+          {THEME_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`${styles.pill} ${theme === option.value ? styles.pillActive : ""}`}
+              onClick={() => onThemeChange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
     </section>
