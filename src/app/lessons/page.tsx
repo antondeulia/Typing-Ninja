@@ -2,7 +2,6 @@
 
 import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/typing/Sidebar";
 import { LESSON_UNITS } from "@/data/lessons";
 import styles from "./page.module.css";
 
@@ -23,8 +22,6 @@ export default function LessonsPage() {
 
   return (
     <main className={styles.app}>
-      <Sidebar styles={styles} />
-
       <section className={styles.contentWrap}>
         <header className={styles.heading}>
           <p className={styles.overline}>Lessons</p>

@@ -5,9 +5,6 @@ import { formatTime } from "@/utils/typing/time";
 type TopPanelProps = {
   styles: StyleModule;
   timeLeft: number;
-  accuracy: number;
-  wpm: number;
-  progress: number;
   settingsOpen: boolean;
   onReset: () => void;
   onToggleSettings: () => void;
@@ -16,9 +13,6 @@ type TopPanelProps = {
 export function TopPanel({
   styles,
   timeLeft,
-  accuracy,
-  wpm,
-  progress,
   settingsOpen,
   onReset,
   onToggleSettings,
@@ -27,20 +21,7 @@ export function TopPanel({
     <header className={styles.compactTopPanel}>
       <section className={styles.metricsInline}>
         <article>
-          <span>Time</span>
           <strong>{formatTime(timeLeft)}</strong>
-        </article>
-        <article>
-          <span>Accuracy</span>
-          <strong>{accuracy}%</strong>
-        </article>
-        <article>
-          <span>WPM</span>
-          <strong>{wpm}</strong>
-        </article>
-        <article>
-          <span>Progress</span>
-          <strong>{progress}%</strong>
         </article>
       </section>
 

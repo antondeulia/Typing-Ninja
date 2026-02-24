@@ -8,12 +8,14 @@ type SettingsPanelProps = {
   duration: number;
   includeNumbers: boolean;
   includePunctuation: boolean;
+  blockOnError: boolean;
   showKeyboard: boolean;
   theme: ThemeMode;
   onTextTypeChange: (value: TextType) => void;
   onDurationChange: (value: number) => void;
   onToggleNumbers: () => void;
   onTogglePunctuation: () => void;
+  onToggleBlockOnError: () => void;
   onToggleKeyboard: () => void;
   onFocusMode: () => void;
   onThemeChange: (value: ThemeMode) => void;
@@ -25,12 +27,14 @@ export function SettingsPanel({
   duration,
   includeNumbers,
   includePunctuation,
+  blockOnError,
   showKeyboard,
   theme,
   onTextTypeChange,
   onDurationChange,
   onToggleNumbers,
   onTogglePunctuation,
+  onToggleBlockOnError,
   onToggleKeyboard,
   onFocusMode,
   onThemeChange,
@@ -84,6 +88,19 @@ export function SettingsPanel({
             onClick={onTogglePunctuation}
           >
             Add punctuation
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.settingsGroup}>
+        <span>Typing behavior</span>
+        <div className={styles.pillsRow}>
+          <button
+            type="button"
+            className={`${styles.pill} ${blockOnError ? styles.pillActive : ""}`}
+            onClick={onToggleBlockOnError}
+          >
+            Block on error
           </button>
         </div>
       </div>

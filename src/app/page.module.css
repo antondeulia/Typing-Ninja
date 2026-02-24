@@ -59,7 +59,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   width: 100%;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .sidebarItemActive {
@@ -223,13 +225,13 @@
 
 .compactTopPanel {
   width: 100%;
-  margin: 0 auto;
+  margin: 0 auto 4px;
   padding: 6px 8px;
   border-radius: 10px;
-  background: var(--panel-bg);
-  display: flex;
+  background: transparent;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
   overflow-x: auto;
 }
@@ -238,6 +240,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  grid-column: 2;
+  justify-self: center;
 }
 
 .metricsInline article {
@@ -250,15 +254,25 @@
   gap: 4px;
 }
 
+.metricsInline > article:first-child {
+  justify-content: center;
+  text-align: center;
+}
+
+.metricsInline > article:first-child strong {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .metricsInline span {
-  font-size: 8px;
+  font-size: 9px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .metricsInline strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -266,6 +280,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  grid-column: 3;
+  justify-self: end;
 }
 
 .actionButton {
@@ -354,8 +370,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
-  margin-top: 35px;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .textArea {
@@ -364,7 +380,10 @@
   --typing-padding-y: 8px;
   margin: 0 auto;
   width: 100%;
-  height: calc((var(--typing-line-height) * var(--typing-visible-lines) * 1em) + (var(--typing-padding-y) * 2) - 2px);
+  height: calc(
+    (var(--typing-line-height) * var(--typing-visible-lines) * 1em) +
+      (var(--typing-padding-y) * 2) - 2px
+  );
   overflow-x: hidden;
   overflow-y: hidden;
   padding: var(--typing-padding-y) 4px;
@@ -389,7 +408,10 @@
 .char {
   position: relative;
   border-radius: 4px;
-  transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
   will-change: background-color, color, box-shadow;
 }
 
@@ -783,5 +805,3 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
-

@@ -7,6 +7,7 @@ type TrainingTextProps = {
   typed: string;
   activeIndex: number;
   finished: boolean;
+  blockedErrorIndex?: number | null;
   textBoxRef: RefObject<HTMLDivElement | null>;
   currentCharRef: RefObject<HTMLSpanElement | null>;
   onFocusInput: () => void;
@@ -18,6 +19,7 @@ export function TrainingText({
   typed,
   activeIndex,
   finished,
+  blockedErrorIndex = null,
   textBoxRef,
   currentCharRef,
   onFocusInput,
@@ -48,6 +50,10 @@ export function TrainingText({
 
         if (index === activeIndex && !finished) {
           className = `${className} ${styles.current}`;
+        }
+
+        if (index === blockedErrorIndex && !finished) {
+          className = `${styles.char} ${styles.wrong} ${styles.current}`;
         }
 
         if (isSpace) {

@@ -79,10 +79,10 @@ export const TIME_OPTIONS: TimeOption[] = [
 export const SIDEBAR_ITEMS = [
   { label: "Practice", href: "/" },
   { label: "Lessons", href: "/lessons" },
-  { label: "Leaders" },
-  { label: "Tournaments" },
-  { label: "Tests" },
-  { label: "Code" },
+  { label: "Leaders", href: "/leaders" },
+  { label: "Tournaments", href: "/tournaments" },
+  { label: "Tests", href: "/tests" },
+  { label: "Code", href: "/code" },
 ];
 
 export const KEYBOARD_ROWS: KeyboardKey[][] = [

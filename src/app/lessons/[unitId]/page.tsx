@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { Keyboard } from "@/components/typing/Keyboard";
-import { Sidebar } from "@/components/typing/Sidebar";
 import { TrainingText } from "@/components/typing/TrainingText";
+import { useTypingSound } from "@/components/typing/useTypingSound";
 import { LESSON_UNITS } from "@/data/lessons";
 import typingStyles from "@/app/page.module.css";
 import lessonStyles from "./page.module.css";
@@ -37,6 +38,11 @@ const hasUnfixedMistake = (typedValue: string, expectedValue: string) => {
     }
   }
   return false;
+};
+
+const removeLastWord = (value: string) => {
+  const withoutTrailingSpaces = value.replace(/\s+$/, "");
+  return withoutTrailingSpaces.replace(/\S+$/, "");
 };
 
 const splitLessonRows = (lessonText: string, rowsCount = LESSON_ROWS_PER_UNIT) => {
@@ -78,8 +84,12 @@ const splitLessonRows = (lessonText: string, rowsCount = LESSON_ROWS_PER_UNIT) =
 
 export default function LessonPage() {
   const router = useRouter();
+  const { isAuthModalOpen } = useAuthModal();
+  const { playTypingSound } = useTypingSound();
   const params = useParams<{ unitId: string }>();
   const [typed, setTyped] = useState("");
+  const [blockedErrorIndex, setBlockedErrorIndex] = useState<number | null>(null);
+  const [errorAttempts, setErrorAttempts] = useState(0);
   const [activeCode, setActiveCode] = useState("");
   const [activeRowIndex, setActiveRowIndex] = useState(0);
   const [rowResults, setRowResults] = useState<RowResult[]>([]);
@@ -142,6 +152,8 @@ export default function LessonPage() {
 
   useEffect(() => {
     setTyped("");
+    setBlockedErrorIndex(null);
+    setErrorAttempts(0);
     setActiveCode("");
     setActiveRowIndex(0);
     setRowResults([]);
@@ -182,6 +194,7 @@ export default function LessonPage() {
 
       setActiveRowIndex((prev) => prev + 1);
       setTyped("");
+      setBlockedErrorIndex(null);
     },
     [activeRowIndex, currentRowText, lessonRows.length],
   );
@@ -200,7 +213,9 @@ export default function LessonPage() {
       flashKey(event.code);
 
       if (event.key === "Backspace") {
-        setTyped((prev) => prev.slice(0, -1));
+        playTypingSound("backspace");
+        setBlockedErrorIndex(null);
+        setTyped((prev) => (event.ctrlKey ? removeLastWord(prev) : prev.slice(0, -1)));
         return;
       }
 
@@ -213,10 +228,19 @@ export default function LessonPage() {
         return;
       }
 
+      playTypingSound(nextChar === " " ? "space" : "default");
+
       if (startedAt === null) {
         setStartedAt(Date.now());
       }
 
+      if (nextChar !== currentRowText[typed.length]) {
+        setBlockedErrorIndex(typed.length);
+        setErrorAttempts((prev) => prev + 1);
+        return;
+      }
+
+      setBlockedErrorIndex(null);
       const nextTyped = typed + nextChar;
 
       setTyped(nextTyped);
@@ -225,11 +249,22 @@ export default function LessonPage() {
         completeCurrentRow(nextTyped);
       }
     },
-    [completeCurrentRow, currentRowText, flashKey, lesson, resultModalOpen, startedAt, typed],
+    [
+      completeCurrentRow,
+      currentRowText,
+      flashKey,
+      lesson,
+      playTypingSound,
+      resultModalOpen,
+      startedAt,
+      typed,
+    ],
   );
 
   const resetLesson = useCallback(() => {
     setTyped("");
+    setBlockedErrorIndex(null);
+    setErrorAttempts(0);
     setActiveCode("");
     setActiveRowIndex(0);
     setRowResults([]);
@@ -248,8 +283,9 @@ export default function LessonPage() {
   const totalRows = lessonRows.length;
   const completedRows = rowResults.length;
   const totalTypedChars = finishedRowsTypedChars + typed.length;
+  const totalAttempts = totalTypedChars + errorAttempts;
   const totalCorrectChars = finishedRowsCorrectChars + liveCorrectChars;
-  const accuracy = totalTypedChars === 0 ? 100 : Math.round((totalCorrectChars / totalTypedChars) * 100);
+  const accuracy = totalAttempts === 0 ? 100 : Math.round((totalCorrectChars / totalAttempts) * 100);
   const activeIndex = typed.length;
   const progress = totalRows === 0 ? 0 : Math.min(100, Math.floor((completedRows / totalRows) * 100));
 
@@ -263,7 +299,7 @@ export default function LessonPage() {
 
   const wpm = elapsedSeconds === 0 ? 0 : Math.round((totalCorrectChars / 5 / elapsedSeconds) * 60);
   const cpm = elapsedSeconds === 0 ? 0 : Math.round((totalCorrectChars / elapsedSeconds) * 60);
-  const mistakes = Math.max(0, totalTypedChars - totalCorrectChars);
+  const mistakes = Math.max(0, totalTypedChars - totalCorrectChars) + errorAttempts;
   const canContinue = accuracy >= PASSING_ACCURACY;
   const nextLessonIndex = LESSON_UNITS.findIndex((item) => item.id === lesson?.id);
   const nextLesson = nextLessonIndex >= 0 ? LESSON_UNITS[nextLessonIndex + 1] : undefined;
@@ -274,6 +310,10 @@ export default function LessonPage() {
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (isAuthModalOpen) {
+        return;
+      }
+
       if (resultModalOpen && canContinue && event.key === "Escape") {
         setResultModalOpen(false);
         return;
@@ -293,7 +333,7 @@ export default function LessonPage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [canContinue, handleKey, resultModalOpen]);
+  }, [canContinue, handleKey, isAuthModalOpen, resultModalOpen]);
 
   useEffect(() => {
     if (!resultModalOpen) {
@@ -307,7 +347,6 @@ export default function LessonPage() {
   if (!lesson) {
     return (
       <main className={styles.app}>
-        <Sidebar styles={styles} />
         <div className={styles.contentWrap}>
           <header className={styles.lessonHeader}>
             <p className={styles.lessonOverline}>Lesson</p>
@@ -325,8 +364,6 @@ export default function LessonPage() {
 
   return (
     <main className={styles.app}>
-      <Sidebar styles={styles} />
-
       <div className={styles.contentWrap}>
         <header className={styles.lessonHeader}>
           <h1 className={styles.lessonTitle}>{lesson.title}</h1>
@@ -344,6 +381,7 @@ export default function LessonPage() {
             trainingText={currentRowText}
             typed={typed}
             activeIndex={activeIndex}
+            blockedErrorIndex={blockedErrorIndex}
             finished={resultModalOpen}
             textBoxRef={textBoxRef}
             currentCharRef={currentCharRef}

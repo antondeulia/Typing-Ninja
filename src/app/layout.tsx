@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { AppShell } from "@/components/navigation/AppShell";
+import { RouteScrollbarController } from "@/components/navigation/RouteScrollbarController";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -25,7 +27,8 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className={`${spaceGrotesk.variable} ${jetBrainsMono.variable}`}>
-        {children}
+        <RouteScrollbarController />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

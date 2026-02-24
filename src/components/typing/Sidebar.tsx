@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/data/mock";
-import { StyleModule } from "@/shared/types/style";
+import styles from "./Sidebar.module.css";
 
 type SidebarProps = {
-  styles: StyleModule;
   onSignInClick?: () => void;
 };
 
-export function Sidebar({ styles, onSignInClick }: SidebarProps) {
+export function Sidebar({ onSignInClick }: SidebarProps) {
   const pathname = usePathname();
 
   return (
     <aside className={styles.sidebar}>
       <button type="button" className={styles.signInButton} onClick={onSignInClick}>
-        Sign In
+        Log in
       </button>
       <nav className={styles.sidebarNav}>
         {SIDEBAR_ITEMS.map((item) => {
